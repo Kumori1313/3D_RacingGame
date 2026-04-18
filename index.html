@@ -107,16 +107,12 @@ scene.add(sun);
 scene.add(sun.target);
 
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(200, 200),
-  new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.9, metalness: 0.0 })
+  new THREE.PlaneGeometry(400, 400),
+  new THREE.MeshStandardMaterial({ color: 0x3a5f2a, roughness: 0.95, metalness: 0.0 })
 );
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
-
-const grid = new THREE.GridHelper(200, 100, 0x333333, 0x222222);
-grid.position.y = 0.001;
-scene.add(grid);
 
 const carPlaceholder = new THREE.Mesh(
   new THREE.BoxGeometry(2, 1, 4),
@@ -194,6 +190,145 @@ for (const c of connections) {
   vehicle.addWheel(wheelOptions);
 }
 vehicle.addToWorld(world);
+
+// --- Track (procedural) ---
+const trackControlPoints = [
+  new THREE.Vector3(  0, 0,   0),
+  new THREE.Vector3( 60, 0, -25),
+  new THREE.Vector3(110, 0,  20),
+  new THREE.Vector3( 95, 0,  80),
+  new THREE.Vector3( 30, 0, 115),
+  new THREE.Vector3(-40, 0, 105),
+  new THREE.Vector3(-95, 0,  50),
+  new THREE.Vector3(-80, 0, -30),
+  new THREE.Vector3(-20, 0, -50),
+];
+const trackCurve = new THREE.CatmullRomCurve3(trackControlPoints, true, 'catmullrom', 0.5);
+
+const TRACK_SAMPLES = 400;
+const TRACK_WIDTH = 18;
+const trackCenterline = [];
+const trackRightNormals = [];
+for (let i = 0; i <= TRACK_SAMPLES; i++) {
+  const t = i / TRACK_SAMPLES;
+  const p = trackCurve.getPoint(t);
+  const tan = trackCurve.getTangent(t).normalize();
+  // Right-hand normal in XZ plane
+  const rightN = new THREE.Vector3(tan.z, 0, -tan.x).normalize();
+  trackCenterline.push(p);
+  trackRightNormals.push(rightN);
+}
+
+// Road ribbon mesh
+{
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+  for (let i = 0; i <= TRACK_SAMPLES; i++) {
+    const p = trackCenterline[i];
+    const n = trackRightNormals[i];
+    const hw = TRACK_WIDTH / 2;
+    positions.push(p.x - n.x * hw, 0.02, p.z - n.z * hw);
+    positions.push(p.x + n.x * hw, 0.02, p.z + n.z * hw);
+    uvs.push(0, i * 0.25);
+    uvs.push(1, i * 0.25);
+    if (i < TRACK_SAMPLES) {
+      const a = i * 2;
+      indices.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+    }
+  }
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geom.setIndex(indices);
+  geom.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x1c1c1c, roughness: 0.95, metalness: 0.0,
+  });
+  const mesh = new THREE.Mesh(geom, mat);
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+}
+
+// Dashed centerline
+{
+  const pts = trackCenterline.map((p) => new THREE.Vector3(p.x, 0.03, p.z));
+  const g = new THREE.BufferGeometry().setFromPoints(pts);
+  const m = new THREE.LineDashedMaterial({ color: 0xffcc00, dashSize: 2, gapSize: 2, linewidth: 2 });
+  const line = new THREE.Line(g, m);
+  line.computeLineDistances();
+  scene.add(line);
+}
+
+// Start/finish checkerboard stripe
+{
+  const cvs = document.createElement('canvas');
+  cvs.width = 64; cvs.height = 16;
+  const ctx = cvs.getContext('2d');
+  for (let x = 0; x < 8; x++) {
+    for (let y = 0; y < 2; y++) {
+      ctx.fillStyle = (x + y) % 2 === 0 ? '#fff' : '#000';
+      ctx.fillRect(x * 8, y * 8, 8, 8);
+    }
+  }
+  const tex = new THREE.CanvasTexture(cvs);
+  tex.magFilter = THREE.NearestFilter;
+  const geom = new THREE.PlaneGeometry(TRACK_WIDTH, 2.5);
+  geom.rotateX(-Math.PI / 2);
+  const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 });
+  const m = new THREE.Mesh(geom, mat);
+  const p0 = trackCenterline[0];
+  const tan0 = trackCurve.getTangent(0);
+  m.position.set(p0.x, 0.025, p0.z);
+  m.rotation.y = Math.atan2(tan0.x, tan0.z);
+  scene.add(m);
+}
+
+// Guard rails (visual + physics)
+{
+  const railH = 1.0;
+  const railT = 0.3;
+  const railL = 4.0;
+  const railMat = new THREE.MeshStandardMaterial({ color: 0xcc2424, roughness: 0.5, metalness: 0.1 });
+  const railGeom = new THREE.BoxGeometry(railT, railH, railL);
+  const railShape = new CANNON.Box(new CANNON.Vec3(railT / 2, railH / 2, railL / 2));
+  const step = 4;
+  for (let i = 0; i < TRACK_SAMPLES; i += step) {
+    const p = trackCenterline[i];
+    const n = trackRightNormals[i];
+    const tan = trackCurve.getTangent(i / TRACK_SAMPLES);
+    const yaw = Math.atan2(tan.x, tan.z);
+    const offset = TRACK_WIDTH / 2 + railT / 2;
+    for (const side of [-1, 1]) {
+      const px = p.x + n.x * side * offset;
+      const pz = p.z + n.z * side * offset;
+      const mesh = new THREE.Mesh(railGeom, railMat);
+      mesh.position.set(px, railH / 2, pz);
+      mesh.rotation.y = yaw;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+      const body = new CANNON.Body({ mass: 0 });
+      body.addShape(railShape);
+      body.position.set(px, railH / 2, pz);
+      body.quaternion.setFromEuler(0, yaw, 0);
+      world.addBody(body);
+    }
+  }
+}
+
+// Place car at starting line, oriented along the initial tangent
+{
+  const p0 = trackCenterline[0];
+  const tan0 = trackCurve.getTangent(0);
+  const yaw0 = Math.atan2(tan0.x, tan0.z);
+  chassisBody.position.set(p0.x, 2, p0.z);
+  chassisBody.quaternion.setFromEuler(0, yaw0, 0);
+  chassisBody.velocity.set(0, 0, 0);
+  chassisBody.angularVelocity.set(0, 0, 0);
+  camera.position.set(p0.x + 8, 5, p0.z + 10);
+  controls.target.set(p0.x, 1, p0.z);
+}
 
 // --- Input ---
 const keys = { forward: false, back: false, left: false, right: false, handbrake: false };
