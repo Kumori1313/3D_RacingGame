@@ -43,6 +43,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
@@ -121,10 +122,126 @@ const carPlaceholder = new THREE.Mesh(
   new THREE.BoxGeometry(2, 1, 4),
   new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.3, metalness: 0.7 })
 );
-carPlaceholder.position.y = 0.5;
 carPlaceholder.castShadow = true;
 carPlaceholder.receiveShadow = true;
 scene.add(carPlaceholder);
+
+const wheelMeshes = [];
+const wheelGeom = new THREE.CylinderGeometry(0.34, 0.34, 0.3, 20);
+wheelGeom.rotateZ(Math.PI / 2);
+const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+for (let i = 0; i < 4; i++) {
+  const m = new THREE.Mesh(wheelGeom, wheelMat);
+  m.castShadow = true;
+  scene.add(m);
+  wheelMeshes.push(m);
+}
+
+// --- Physics ---
+const world = new CANNON.World();
+world.gravity.set(0, -9.82, 0);
+world.broadphase = new CANNON.SAPBroadphase(world);
+world.defaultContactMaterial.friction = 0.3;
+
+const groundMat = new CANNON.Material('ground');
+const groundBody = new CANNON.Body({ mass: 0, material: groundMat });
+groundBody.addShape(new CANNON.Plane());
+groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+world.addBody(groundBody);
+
+const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
+const chassisBody = new CANNON.Body({ mass: 1500 });
+chassisBody.addShape(chassisShape);
+chassisBody.position.set(0, 2, 0);
+chassisBody.angularDamping = 0.3;
+
+const vehicle = new CANNON.RaycastVehicle({
+  chassisBody,
+  indexRightAxis: 0,
+  indexForwardAxis: 2,
+  indexUpAxis: 1,
+});
+
+const wheelOptions = {
+  radius: 0.34,
+  directionLocal: new CANNON.Vec3(0, -1, 0),
+  suspensionStiffness: 30,
+  suspensionRestLength: 0.3,
+  frictionSlip: 2,
+  dampingRelaxation: 2.3,
+  dampingCompression: 4.4,
+  maxSuspensionForce: 100000,
+  rollInfluence: 0.01,
+  axleLocal: new CANNON.Vec3(1, 0, 0),
+  chassisConnectionPointLocal: new CANNON.Vec3(),
+  maxSuspensionTravel: 0.3,
+  customSlidingRotationalSpeed: -30,
+  useCustomSlidingRotationalSpeed: true,
+};
+
+const wheelX = 0.9;
+const wheelY = -0.3;
+const wheelZ = 1.5;
+// Order: FL, FR, RL, RR — front = +z
+const connections = [
+  [-wheelX, wheelY,  wheelZ],
+  [ wheelX, wheelY,  wheelZ],
+  [-wheelX, wheelY, -wheelZ],
+  [ wheelX, wheelY, -wheelZ],
+];
+for (const c of connections) {
+  wheelOptions.chassisConnectionPointLocal.set(c[0], c[1], c[2]);
+  vehicle.addWheel(wheelOptions);
+}
+vehicle.addToWorld(world);
+
+// --- Input ---
+const keys = { forward: false, back: false, left: false, right: false, handbrake: false };
+window.addEventListener('keydown', (e) => {
+  switch (e.code) {
+    case 'KeyW': case 'ArrowUp':    keys.forward = true; break;
+    case 'KeyS': case 'ArrowDown':  keys.back = true; break;
+    case 'KeyA': case 'ArrowLeft':  keys.left = true; break;
+    case 'KeyD': case 'ArrowRight': keys.right = true; break;
+    case 'Space':                    keys.handbrake = true; break;
+  }
+});
+window.addEventListener('keyup', (e) => {
+  switch (e.code) {
+    case 'KeyW': case 'ArrowUp':    keys.forward = false; break;
+    case 'KeyS': case 'ArrowDown':  keys.back = false; break;
+    case 'KeyA': case 'ArrowLeft':  keys.left = false; break;
+    case 'KeyD': case 'ArrowRight': keys.right = false; break;
+    case 'Space':                    keys.handbrake = false; break;
+  }
+});
+
+const MAX_STEER = 0.5;
+const MAX_FORCE = 2400;
+const BRAKE_FORCE = 40;
+let currentSteer = 0;
+
+function updateVehicle(dt) {
+  const engineForce = keys.forward ? -MAX_FORCE : keys.back ? MAX_FORCE : 0;
+  // AWD on wheels 0..3
+  for (let i = 0; i < 4; i++) vehicle.applyEngineForce(engineForce, i);
+
+  const coasting = !keys.forward && !keys.back;
+  const brake = keys.handbrake ? BRAKE_FORCE : (coasting ? 2 : 0);
+  for (let i = 0; i < 4; i++) vehicle.setBrake(brake, i);
+
+  const steerInput = (keys.left ? 1 : 0) - (keys.right ? 1 : 0);
+  if (steerInput !== 0) {
+    currentSteer += steerInput * dt * 3;
+    currentSteer = Math.max(-MAX_STEER, Math.min(MAX_STEER, currentSteer));
+  } else {
+    const centerRate = dt * 5;
+    if (Math.abs(currentSteer) < centerRate) currentSteer = 0;
+    else currentSteer -= Math.sign(currentSteer) * centerRate;
+  }
+  vehicle.setSteeringValue(currentSteer, 0);
+  vehicle.setSteeringValue(currentSteer, 1);
+}
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -135,7 +252,22 @@ window.addEventListener('resize', () => {
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
-  const dt = clock.getDelta();
+  const dt = Math.min(clock.getDelta(), 0.1);
+
+  updateVehicle(dt);
+  world.step(1 / 60, dt, 3);
+
+  carPlaceholder.position.copy(chassisBody.position);
+  carPlaceholder.quaternion.copy(chassisBody.quaternion);
+
+  for (let i = 0; i < vehicle.wheelInfos.length; i++) {
+    vehicle.updateWheelTransform(i);
+    const t = vehicle.wheelInfos[i].worldTransform;
+    wheelMeshes[i].position.copy(t.position);
+    wheelMeshes[i].quaternion.copy(t.quaternion);
+  }
+
+  controls.target.lerp(carPlaceholder.position, 0.1);
   controls.update();
   renderer.render(scene, camera);
 }
