@@ -26,6 +26,24 @@
     pointer-events: none;
     z-index: 10;
   }
+  #cam-label {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    padding: 6px 14px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    color: #f0f0f0;
+    opacity: 0;
+    transition: opacity 0.25s ease-out;
+  }
+  #cam-label.show {
+    opacity: 1;
+  }
 </style>
 <script type="importmap">
 {
@@ -39,13 +57,16 @@
 </head>
 <body>
 <canvas id="canvas"></canvas>
-<div id="hud"></div>
+<div id="hud">
+  <div id="cam-label"></div>
+</div>
 
 <script type="module">
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
 const canvas = document.getElementById('canvas');
 
@@ -83,10 +104,6 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 camera.position.set(6, 4, 8);
-
-const controls = new OrbitControls(camera, canvas);
-controls.enableDamping = true;
-controls.target.set(0, 0.5, 0);
 
 const hemi = new THREE.HemisphereLight(0xffffff, 0x222233, 0.25);
 scene.add(hemi);
@@ -133,6 +150,56 @@ for (let i = 0; i < 4; i++) {
   wheelMeshes.push(m);
 }
 
+// Visual car state — swapped in when Ferrari GLB loads.
+let visualBody = carPlaceholder;
+let visualWheels = wheelMeshes;
+let chassisVisualOffset = new THREE.Vector3(0, 0, 0);
+
+{
+  const draco = new DRACOLoader();
+  draco.setDecoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/gltf/');
+  const gltfLoader = new GLTFLoader();
+  gltfLoader.setDRACOLoader(draco);
+  gltfLoader.load(
+    'https://threejs.org/examples/models/gltf/ferrari.glb',
+    (gltf) => {
+      const root = gltf.scene;
+      // Ferrari GLB is authored facing -Z; our chassis forward is +Z.
+      const inner = root.children[0] || root;
+      inner.rotation.y = Math.PI;
+
+      root.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        }
+      });
+
+      const wheelNames = ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr'];
+      const newWheels = [];
+      for (const name of wheelNames) {
+        const w = root.getObjectByName(name);
+        if (w) {
+          scene.attach(w); // detach from body hierarchy, preserve world xform
+          newWheels.push(w);
+        }
+      }
+
+      scene.add(root);
+
+      carPlaceholder.visible = false;
+      for (const m of wheelMeshes) m.visible = false;
+
+      visualBody = root;
+      visualWheels = newWheels;
+      // Tune: raises body so it sits flush on the wheels at rest.
+      chassisVisualOffset = new THREE.Vector3(0, -.85, 0);
+    },
+    undefined,
+    (err) => console.error('Failed to load ferrari.glb', err)
+  );
+}
+
 // --- Physics ---
 const world = new CANNON.World();
 world.gravity.set(0, -9.82, 0);
@@ -177,13 +244,14 @@ const wheelOptions = {
 
 const wheelX = 0.9;
 const wheelY = -0.3;
-const wheelZ = 1.5;
+const wheelZFront = 1.15;
+const wheelZRear = 1.5;
 // Order: FL, FR, RL, RR — front = +z
 const connections = [
-  [-wheelX, wheelY,  wheelZ],
-  [ wheelX, wheelY,  wheelZ],
-  [-wheelX, wheelY, -wheelZ],
-  [ wheelX, wheelY, -wheelZ],
+  [-wheelX, wheelY,  wheelZFront],
+  [ wheelX, wheelY,  wheelZFront],
+  [-wheelX, wheelY, -wheelZRear],
+  [ wheelX, wheelY, -wheelZRear],
 ];
 for (const c of connections) {
   wheelOptions.chassisConnectionPointLocal.set(c[0], c[1], c[2]);
@@ -327,7 +395,6 @@ for (let i = 0; i <= TRACK_SAMPLES; i++) {
   chassisBody.velocity.set(0, 0, 0);
   chassisBody.angularVelocity.set(0, 0, 0);
   camera.position.set(p0.x + 8, 5, p0.z + 10);
-  controls.target.set(p0.x, 1, p0.z);
 }
 
 // --- Input ---
@@ -378,6 +445,93 @@ function updateVehicle(dt) {
   vehicle.setSteeringValue(currentSteer, 1);
 }
 
+// --- Cameras ---
+const CAM_MODES = ['CHASE', 'HOOD', 'BUMPER', 'COCKPIT', 'CINEMATIC'];
+let camModeIdx = 0;
+const camLabel = document.getElementById('cam-label');
+let camLabelTimer = 0;
+
+function showCamLabel(name) {
+  camLabel.textContent = `CAM  ${name}`;
+  camLabel.classList.add('show');
+  camLabelTimer = 1.0;
+}
+showCamLabel(CAM_MODES[camModeIdx]);
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyC') {
+    camModeIdx = (camModeIdx + 1) % CAM_MODES.length;
+    const mode = CAM_MODES[camModeIdx];
+    showCamLabel(mode);
+    camera.fov = mode === 'COCKPIT' ? 75 : 60;
+    camera.updateProjectionMatrix();
+    chaseInit = false;
+  }
+});
+
+const chasePos = new THREE.Vector3();
+const chaseLook = new THREE.Vector3();
+let chaseInit = false;
+let cinematicT = 0;
+
+const _v1 = new THREE.Vector3();
+const _v2 = new THREE.Vector3();
+const _v3 = new THREE.Vector3();
+const _q1 = new THREE.Quaternion();
+const _e1 = new THREE.Euler();
+const _m1 = new THREE.Matrix4();
+const _up = new THREE.Vector3(0, 1, 0);
+
+function updateCamera(dt, pos, q) {
+  const mode = CAM_MODES[camModeIdx];
+
+  _e1.setFromQuaternion(_q1.copy(q), 'YXZ');
+  const yawQ = new THREE.Quaternion().setFromAxisAngle(_up, _e1.y);
+
+  if (mode === 'CHASE') {
+    const desiredPos = _v1.set(0, 2.3, -6).applyQuaternion(yawQ).add(pos);
+    const desiredLook = _v2.set(0, 0.9, 4).applyQuaternion(yawQ).add(pos);
+    if (!chaseInit) {
+      chasePos.copy(desiredPos);
+      chaseLook.copy(desiredLook);
+      chaseInit = true;
+    }
+    const aPos = 1 - Math.exp(-dt / 0.14);
+    const aLook = 1 - Math.exp(-dt / 0.09);
+    chasePos.lerp(desiredPos, aPos);
+    chaseLook.lerp(desiredLook, aLook);
+    camera.up.copy(_up);
+    camera.position.copy(chasePos);
+    camera.lookAt(chaseLook);
+  } else if (mode === 'HOOD' || mode === 'BUMPER' || mode === 'COCKPIT') {
+    let lx, ly, lz, tx, ty, tz;
+    if (mode === 'HOOD')         { lx = 0;    ly = 0.85; lz = 1.2;  tx = 0;    ty = 0.85; tz = 20; }
+    else if (mode === 'BUMPER')  { lx = 0;    ly = 0.35; lz = 2.05; tx = 0;    ty = 0.35; tz = 20; }
+    else                         { lx = -0.42;ly = 0.7;  lz = 0.15; tx = -0.42;ty = 0.6;  tz = 20; }
+    _v1.set(lx, ly, lz).applyQuaternion(q).add(pos);
+    _v2.set(tx, ty, tz).applyQuaternion(q).add(pos);
+    _v3.set(0, 1, 0).applyQuaternion(q);
+    camera.position.copy(_v1);
+    _m1.lookAt(_v1, _v2, _v3);
+    camera.quaternion.setFromRotationMatrix(_m1);
+  } else if (mode === 'CINEMATIC') {
+    cinematicT += dt * 0.22;
+    const r = 9;
+    camera.up.copy(_up);
+    camera.position.set(
+      pos.x + Math.cos(cinematicT) * r,
+      pos.y + 2.6,
+      pos.z + Math.sin(cinematicT) * r
+    );
+    camera.lookAt(pos.x, pos.y + 0.5, pos.z);
+  }
+
+  if (camLabelTimer > 0) {
+    camLabelTimer -= dt;
+    if (camLabelTimer <= 0) camLabel.classList.remove('show');
+  }
+}
+
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -385,25 +539,90 @@ window.addEventListener('resize', () => {
 });
 
 const clock = new THREE.Clock();
+
+// Fixed-step physics with render-time interpolation.
+const FIXED_STEP = 1 / 60;
+let physAccum = 0;
+const prevChassisPos = new CANNON.Vec3().copy(chassisBody.position);
+const prevChassisQuat = new CANNON.Quaternion().copy(chassisBody.quaternion);
+const interpPos = new THREE.Vector3();
+const interpQuat = new THREE.Quaternion();
+const _chassisQInv = new THREE.Quaternion();
+const _tmpQ = new THREE.Quaternion();
+const _tmpV = new THREE.Vector3();
+
+// Wheel visual spin: accumulated each render frame from chassis forward speed,
+// so wheel rotation is smooth regardless of physics tick rate.
+const WHEEL_RADIUS = 0.34;
+const _wheelYAxis = new THREE.Vector3(0, 1, 0);
+const _wheelXAxis = new THREE.Vector3(1, 0, 0);
+const _steerQ = new THREE.Quaternion();
+const _rollQ = new THREE.Quaternion();
+const _wheelLocalQ = new THREE.Quaternion();
+const _forwardWS = new THREE.Vector3();
+const wheelRoll = [0, 0, 0, 0];
+
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.1);
 
-  updateVehicle(dt);
-  world.step(1 / 60, dt, 3);
+  physAccum += dt;
+  while (physAccum >= FIXED_STEP) {
+    prevChassisPos.copy(chassisBody.position);
+    prevChassisQuat.copy(chassisBody.quaternion);
+    updateVehicle(FIXED_STEP);
+    world.step(FIXED_STEP);
+    physAccum -= FIXED_STEP;
+  }
+  const alpha = Math.min(physAccum / FIXED_STEP, 1);
 
-  carPlaceholder.position.copy(chassisBody.position);
-  carPlaceholder.quaternion.copy(chassisBody.quaternion);
+  interpPos.set(
+    prevChassisPos.x + (chassisBody.position.x - prevChassisPos.x) * alpha,
+    prevChassisPos.y + (chassisBody.position.y - prevChassisPos.y) * alpha,
+    prevChassisPos.z + (chassisBody.position.z - prevChassisPos.z) * alpha
+  );
+  interpQuat.set(prevChassisQuat.x, prevChassisQuat.y, prevChassisQuat.z, prevChassisQuat.w);
+  _tmpQ.set(chassisBody.quaternion.x, chassisBody.quaternion.y, chassisBody.quaternion.z, chassisBody.quaternion.w);
+  interpQuat.slerp(_tmpQ, alpha);
 
-  for (let i = 0; i < vehicle.wheelInfos.length; i++) {
+  visualBody.position.copy(interpPos).add(chassisVisualOffset);
+  visualBody.quaternion.copy(interpQuat);
+
+  // Wheel spin: accumulated from chassis forward speed every render frame,
+  // so wheels rotate smoothly regardless of physics tick rate (the main
+  // source of chase-cam stutter since cannon only updates wheel rotation at 60Hz).
+  _forwardWS.set(0, 0, 1).applyQuaternion(interpQuat);
+  const velDotForward =
+    chassisBody.velocity.x * _forwardWS.x +
+    chassisBody.velocity.y * _forwardWS.y +
+    chassisBody.velocity.z * _forwardWS.z;
+  const rollDelta = (velDotForward / WHEEL_RADIUS) * dt;
+  for (let i = 0; i < 4; i++) wheelRoll[i] += rollDelta;
+
+  // Wheel position: re-project chassis-local offset from latest physics tick
+  // into the interpolated chassis frame so wheels ride with the visual body.
+  _chassisQInv.set(
+    chassisBody.quaternion.x, chassisBody.quaternion.y,
+    chassisBody.quaternion.z, chassisBody.quaternion.w
+  ).invert();
+  for (let i = 0; i < visualWheels.length; i++) {
     vehicle.updateWheelTransform(i);
     const t = vehicle.wheelInfos[i].worldTransform;
-    wheelMeshes[i].position.copy(t.position);
-    wheelMeshes[i].quaternion.copy(t.quaternion);
+    _tmpV.set(
+      t.position.x - chassisBody.position.x,
+      t.position.y - chassisBody.position.y,
+      t.position.z - chassisBody.position.z
+    ).applyQuaternion(_chassisQInv).applyQuaternion(interpQuat).add(interpPos);
+    visualWheels[i].position.copy(_tmpV);
+
+    _steerQ.setFromAxisAngle(_wheelYAxis, vehicle.wheelInfos[i].steering);
+    _rollQ.setFromAxisAngle(_wheelXAxis, wheelRoll[i]);
+    _wheelLocalQ.copy(_steerQ).multiply(_rollQ);
+    _tmpQ.copy(interpQuat).multiply(_wheelLocalQ);
+    visualWheels[i].quaternion.copy(_tmpQ);
   }
 
-  controls.target.lerp(carPlaceholder.position, 0.1);
-  controls.update();
+  updateCamera(dt, interpPos, interpQuat);
   renderer.render(scene, camera);
 }
 animate();
