@@ -29,7 +29,7 @@
   #cam-label {
     position: absolute;
     top: 24px;
-    left: 24px;
+    right: 24px;
     padding: 6px 14px;
     background: rgba(0, 0, 0, 0.55);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -43,6 +43,180 @@
   }
   #cam-label.show {
     opacity: 1;
+  }
+  #lap-box {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    padding: 10px 16px 12px;
+    background: rgba(0, 0, 0, 0.45);
+    border-left: 3px solid #e6e6e6;
+    color: #f0f0f0;
+    line-height: 1.1;
+    min-width: 150px;
+  }
+  #lap-box .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 18px;
+  }
+  #lap-box .label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: #b6b6b6;
+    font-weight: 600;
+  }
+  #lap-box .val {
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  #lap-box .time-val {
+    font-size: 22px;
+  }
+  #lap-box .divider {
+    height: 1px;
+    background: rgba(255,255,255,0.12);
+    margin: 6px 0;
+  }
+  #speedo {
+    position: absolute;
+    bottom: 24px;
+    left: 24px;
+    display: flex;
+    align-items: flex-end;
+    gap: 28px;
+    padding: 14px 28px 10px;
+    background: rgba(0, 0, 0, 0.42);
+    border-radius: 4px;
+    color: #f5f5f5;
+  }
+  #speedo-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 180px;
+  }
+  #tach {
+    width: 100%;
+    height: 10px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  #tach-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #7cffb5 0%, #f6e85a 55%, #ff4d3a 85%, #ff1a1a 100%);
+    transition: width 0.04s linear;
+  }
+  #mph {
+    font-size: 88px;
+    font-weight: 800;
+    line-height: 0.95;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -2px;
+  }
+  #mph-label {
+    font-size: 12px;
+    letter-spacing: 4px;
+    color: #cfcfcf;
+    margin-top: 2px;
+  }
+  #gear-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 8px;
+  }
+  #gear {
+    font-size: 72px;
+    font-weight: 800;
+    line-height: 1;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.15s;
+  }
+  #gear.manual { color: #7cffb5; }
+  #gear-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #b6b6b6;
+    margin-top: 2px;
+  }
+  #minimap-wrap {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    width: 220px;
+    height: 220px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    box-sizing: content-box;
+  }
+  #minimap {
+    display: block;
+    width: 220px;
+    height: 220px;
+  }
+  #countdown {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    font-size: 180px;
+    font-weight: 900;
+    letter-spacing: -4px;
+    color: #fff;
+    text-shadow: 0 6px 40px rgba(0, 0, 0, 0.7), 0 0 80px rgba(255, 200, 80, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease-out, transform 0.35s cubic-bezier(.2,1.6,.4,1);
+  }
+  #countdown.show {
+    opacity: 1;
+  }
+  #countdown.pop {
+    transform: translate(-50%, -50%) scale(1.35);
+  }
+  #countdown.go {
+    color: #7cffb5;
+    text-shadow: 0 6px 40px rgba(0, 0, 0, 0.7), 0 0 90px rgba(124, 255, 181, 0.5);
+  }
+  #lap-best.has-best {
+    color: #ffd95a;
+  }
+  #finish-banner {
+    position: absolute;
+    top: 36%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 217, 90, 0.5);
+    padding: 18px 36px;
+    border-radius: 6px;
+    display: none;
+  }
+  #finish-banner.show { display: block; }
+  #finish-banner .title {
+    font-size: 44px;
+    font-weight: 900;
+    letter-spacing: 6px;
+    color: #ffd95a;
+  }
+  #finish-banner .sub {
+    font-size: 14px;
+    letter-spacing: 3px;
+    margin-top: 6px;
+    color: #d8d8d8;
   }
 </style>
 <script type="importmap">
@@ -59,6 +233,31 @@
 <canvas id="canvas"></canvas>
 <div id="hud">
   <div id="cam-label"></div>
+  <div id="lap-box">
+    <div class="row"><span class="label">LAP</span><span class="val" id="lap-count">1 / 3</span></div>
+    <div class="divider"></div>
+    <div class="row"><span class="label">TIME</span><span class="val time-val" id="lap-time">00:00.000</span></div>
+    <div class="row"><span class="label">BEST</span><span class="val" id="lap-best">--:--.---</span></div>
+  </div>
+  <div id="minimap-wrap">
+    <canvas id="minimap" width="220" height="220"></canvas>
+  </div>
+  <div id="speedo">
+    <div id="speedo-left">
+      <div id="tach"><div id="tach-fill"></div></div>
+      <div id="mph">0</div>
+      <div id="mph-label">MPH</div>
+    </div>
+    <div id="gear-box">
+      <div id="gear">N</div>
+      <div id="gear-label">GEAR</div>
+    </div>
+  </div>
+  <div id="countdown"></div>
+  <div id="finish-banner">
+    <div class="title">FINISH</div>
+    <div class="sub" id="finish-sub">BEST --:--.---</div>
+  </div>
 </div>
 
 <script type="module">
@@ -423,8 +622,106 @@ const MAX_FORCE = 2400;
 const BRAKE_FORCE = 40;
 let currentSteer = 0;
 
+// --- Skid marks ---
+// One LineSegments mesh with a ring-buffer of segments. Each grounded wheel
+// whose cannon skidInfo is low (or when the handbrake is held) drops a segment
+// per physics tick from its previous contact point to the current one.
+const SKID_MAX_SEGMENTS = 1400;
+const skidPositions = new Float32Array(SKID_MAX_SEGMENTS * 2 * 3);
+// Park unwritten verts below the track so they don't render as a zero-length line at origin.
+for (let i = 1; i < skidPositions.length; i += 3) skidPositions[i] = -500;
+const skidGeom = new THREE.BufferGeometry();
+skidGeom.setAttribute('position', new THREE.BufferAttribute(skidPositions, 3));
+skidGeom.setDrawRange(0, 0);
+const skidMarks = new THREE.LineSegments(
+  skidGeom,
+  new THREE.LineBasicMaterial({ color: 0x0a0a0a, transparent: true, opacity: 0.7 })
+);
+skidMarks.frustumCulled = false;
+scene.add(skidMarks);
+
+let skidWriteIdx = 0;     // in segment units
+let skidSegmentsUsed = 0;
+const skidPrev = [null, null, null, null];
+
+function emitSkidSegment(ax, ay, az, bx, by, bz) {
+  const o = skidWriteIdx * 6;
+  skidPositions[o]   = ax; skidPositions[o+1] = ay; skidPositions[o+2] = az;
+  skidPositions[o+3] = bx; skidPositions[o+4] = by; skidPositions[o+5] = bz;
+  skidWriteIdx = (skidWriteIdx + 1) % SKID_MAX_SEGMENTS;
+  skidSegmentsUsed = Math.min(skidSegmentsUsed + 1, SKID_MAX_SEGMENTS);
+  skidGeom.attributes.position.needsUpdate = true;
+  skidGeom.setDrawRange(0, skidSegmentsUsed * 2);
+}
+
+function clearSkids() {
+  skidWriteIdx = 0;
+  skidSegmentsUsed = 0;
+  skidGeom.setDrawRange(0, 0);
+  for (let i = 0; i < 4; i++) skidPrev[i] = null;
+  // Re-park positions so the next visible set starts clean.
+  for (let i = 0; i < skidPositions.length; i += 3) {
+    skidPositions[i] = 0;
+    skidPositions[i + 1] = -500;
+    skidPositions[i + 2] = 0;
+  }
+  skidGeom.attributes.position.needsUpdate = true;
+}
+
+function updateSkids() {
+  for (let i = 0; i < 4; i++) {
+    const wi = vehicle.wheelInfos[i];
+    if (!wi.isInContact) { skidPrev[i] = null; continue; }
+    // cannon exposes skidInfo in [0..1]; lower = more slip. Handbrake forces marks.
+    const slipping = (typeof wi.skidInfo === 'number' && wi.skidInfo < 0.45) || keys.handbrake;
+    if (!slipping) { skidPrev[i] = null; continue; }
+
+    const hit = wi.raycastResult.hitPointWorld;
+    const cx = hit.x;
+    const cy = hit.y + 0.015;
+    const cz = hit.z;
+    const prev = skidPrev[i];
+    if (prev) {
+      const dx = cx - prev.x, dz = cz - prev.z;
+      if (dx * dx + dz * dz > 0.0016) { // >4cm, skip tiny hops
+        emitSkidSegment(prev.x, prev.y, prev.z, cx, cy, cz);
+        prev.set(cx, cy, cz);
+      }
+    } else {
+      skidPrev[i] = new THREE.Vector3(cx, cy, cz);
+    }
+  }
+}
+
 function updateVehicle(dt) {
-  const engineForce = keys.forward ? -MAX_FORCE : keys.back ? MAX_FORCE : 0;
+  // Lock the car during countdown and after finish — engine off, wheels braked.
+  if (raceState !== RACE_RACING) {
+    for (let i = 0; i < 4; i++) {
+      vehicle.applyEngineForce(0, i);
+      vehicle.setBrake(raceState === RACE_COUNTDOWN ? 80 : 40, i);
+    }
+    vehicle.setSteeringValue(0, 0);
+    vehicle.setSteeringValue(0, 1);
+    currentSteer = 0;
+    return;
+  }
+
+  let engineForce = keys.forward ? -MAX_FORCE : keys.back ? MAX_FORCE : 0;
+
+  // Manual gearing: scale force by gear, cut at per-gear redline, and briefly
+  // bite the force after a shift (clutch dip).
+  if (gearMode === 'MANUAL' && keys.forward) {
+    const mph = Math.abs(vehicle.currentVehicleSpeedKmHour) * 0.621371;
+    const scale = GEAR_FORCE_SCALE[manualGear];
+    const redline = GEAR_TOP_MPH[manualGear];
+    let redlineScale = 1;
+    if (mph >= redline) redlineScale = 0;
+    else if (mph > redline - 3) redlineScale = (redline - mph) / 3;
+    const clutch = shiftCoolT > 0 ? 0.15 : 1.0;
+    engineForce *= scale * redlineScale * clutch;
+  }
+  if (shiftCoolT > 0) shiftCoolT = Math.max(0, shiftCoolT - dt);
+
   // AWD on wheels 0..3
   for (let i = 0; i < 4; i++) vehicle.applyEngineForce(engineForce, i);
 
@@ -466,8 +763,51 @@ window.addEventListener('keydown', (e) => {
     camera.fov = mode === 'COCKPIT' ? 75 : 60;
     camera.updateProjectionMatrix();
     chaseInit = false;
+  } else if (e.code === 'KeyR') {
+    resetToTrack();
+  } else if (e.code === 'KeyE') {
+    shiftGear(+1);
+  } else if (e.code === 'KeyQ') {
+    shiftGear(-1);
+  } else if (e.code === 'KeyG') {
+    toggleGearMode();
   }
 });
+
+// Reset: snap chassis to nearest centerline sample, oriented along the tangent,
+// upright and stationary. Also clear wheel-roll accumulator so wheels don't
+// spin for an instant off the teleport.
+function resetToTrack() {
+  let bestI = 0;
+  let bestD2 = Infinity;
+  const px = chassisBody.position.x;
+  const pz = chassisBody.position.z;
+  for (let i = 0; i < trackCenterline.length; i++) {
+    const p = trackCenterline[i];
+    const dx = p.x - px;
+    const dz = p.z - pz;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < bestD2) { bestD2 = d2; bestI = i; }
+  }
+  const snap = trackCenterline[bestI];
+  const tan = trackCurve.getTangent(bestI / TRACK_SAMPLES);
+  const yaw = Math.atan2(tan.x, tan.z);
+  chassisBody.position.set(snap.x, 2, snap.z);
+  chassisBody.quaternion.setFromEuler(0, yaw, 0);
+  chassisBody.velocity.set(0, 0, 0);
+  chassisBody.angularVelocity.set(0, 0, 0);
+  prevChassisPos.copy(chassisBody.position);
+  prevChassisQuat.copy(chassisBody.quaternion);
+  currentSteer = 0;
+  for (let i = 0; i < 4; i++) {
+    wheelRoll[i] = 0;
+    vehicle.setSteeringValue(0, i);
+    vehicle.setBrake(0, i);
+    vehicle.applyEngineForce(0, i);
+  }
+  chaseInit = false;
+  clearSkids();
+}
 
 const chasePos = new THREE.Vector3();
 const chaseLook = new THREE.Vector3();
@@ -538,6 +878,308 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// --- HUD ---
+const mphEl = document.getElementById('mph');
+const gearEl = document.getElementById('gear');
+const tachFillEl = document.getElementById('tach-fill');
+const lapCountEl = document.getElementById('lap-count');
+const lapTimeEl = document.getElementById('lap-time');
+const lapBestEl = document.getElementById('lap-best');
+
+// --- Minimap ---
+const minimapCanvas = document.getElementById('minimap');
+const minimapCtx = minimapCanvas.getContext('2d');
+const MINIMAP_SIZE = minimapCanvas.width;
+
+// Scale derived from track bbox diagonal so the whole track fits regardless of
+// where the player is. Use the bbox diagonal as an upper bound on the worst-case
+// player→far-sample distance (inscribed-circle fit in the square canvas).
+const MINIMAP_SCALE = (() => {
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const p of trackCenterline) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.z < minZ) minZ = p.z;
+    if (p.z > maxZ) maxZ = p.z;
+  }
+  const dx = maxX - minX;
+  const dz = maxZ - minZ;
+  const diag = Math.sqrt(dx * dx + dz * dz);
+  return (MINIMAP_SIZE * 0.45) / diag;
+})();
+
+const _miniEuler = new THREE.Euler();
+const _miniQuat = new THREE.Quaternion();
+
+function updateMinimap(pos, q) {
+  const ctx = minimapCtx;
+  const size = MINIMAP_SIZE;
+  const cx = size / 2;
+  const cy = size / 2;
+
+  ctx.clearRect(0, 0, size, size);
+
+  _miniEuler.setFromQuaternion(_miniQuat.copy(q), 'YXZ');
+  const yaw = _miniEuler.y;
+  const cosY = Math.cos(yaw);
+  const sinY = Math.sin(yaw);
+  const s = MINIMAP_SCALE;
+
+  // Project world XZ into player-local (player at origin, forward = up on canvas).
+  // localForward = dx*sinθ + dz*cosθ  (component along chassis +Z = forward).
+  // "Screen-right" in this game is world -X at yaw 0 (three.js right-handed with
+  // chassis forward = +Z inverts the usual visual right), so we negate the
+  // right component so the minimap's left/right matches the chase-cam view.
+  const project = (wx, wz, out) => {
+    const dx = wx - pos.x;
+    const dz = wz - pos.z;
+    out.x = cx - (dx * cosY - dz * sinY) * s;
+    out.y = cy - (dx * sinY + dz * cosY) * s;
+  };
+  const p = { x: 0, y: 0 };
+
+  // Track ribbon: pixel width scales with physical width, clamped so it reads on a small canvas.
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.78)';
+  ctx.lineWidth = Math.max(3, TRACK_WIDTH * s * 0.55);
+  ctx.beginPath();
+  project(trackCenterline[0].x, trackCenterline[0].z, p);
+  ctx.moveTo(p.x, p.y);
+  for (let i = 1; i < trackCenterline.length; i++) {
+    project(trackCenterline[i].x, trackCenterline[i].z, p);
+    ctx.lineTo(p.x, p.y);
+  }
+  ctx.closePath();
+  ctx.stroke();
+
+  // Start/finish marker: short perpendicular segment across the road at sample 0.
+  {
+    const c0 = trackCenterline[0];
+    const n0 = trackRightNormals[0];
+    const half = TRACK_WIDTH * 0.5;
+    const a = { x: 0, y: 0 }, b = { x: 0, y: 0 };
+    project(c0.x - n0.x * half, c0.z - n0.z * half, a);
+    project(c0.x + n0.x * half, c0.z + n0.z * half, b);
+    ctx.strokeStyle = '#ffd95a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+
+  // Player triangle, always at center, pointing up (forward).
+  ctx.fillStyle = '#ff3b30';
+  ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 9);
+  ctx.lineTo(cx - 6, cy + 7);
+  ctx.lineTo(cx + 6, cy + 7);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
+const TOTAL_LAPS = 3;
+// Speed→gear table (MPH cutoffs) used when gearMode === 'AUTO'.
+const GEAR_UP_MPH = [0, 18, 38, 62, 90, 120]; // gear 1..6
+// Per-gear ratio used to estimate RPM: rpm ≈ mph * gearRatio.
+const GEAR_RATIOS = [null, 260, 170, 120, 85, 62, 48];
+const REDLINE_RPM = 7500;
+// Manual-mode gearing: engine-force scale and a hard redline mph per gear.
+// Lower gears push harder but cap sooner; gear 6 accelerates slowly but goes fastest.
+const GEAR_FORCE_SCALE = [null, 1.15, 1.00, 0.84, 0.70, 0.58, 0.48];
+const GEAR_TOP_MPH     = [null,   34,   58,   88,  118,  148,  185];
+let gearMode = 'AUTO'; // 'AUTO' | 'MANUAL'
+let manualGear = 1;
+let shiftCoolT = 0;    // seconds of engine-force bite remaining after a shift (clutch dip)
+const gearLabelEl = document.getElementById('gear-label');
+
+function currentDisplayGear(mph) {
+  return gearMode === 'MANUAL' ? manualGear : gearFromMph(mph);
+}
+function shiftGear(delta) {
+  if (gearMode !== 'MANUAL') return;
+  const next = Math.max(1, Math.min(6, manualGear + delta));
+  if (next !== manualGear) {
+    manualGear = next;
+    shiftCoolT = 0.15;
+  }
+}
+function toggleGearMode() {
+  if (gearMode === 'AUTO') {
+    const mph = Math.abs(vehicle.currentVehicleSpeedKmHour) * 0.621371;
+    manualGear = Math.max(1, gearFromMph(mph));
+    gearMode = 'MANUAL';
+  } else {
+    gearMode = 'AUTO';
+  }
+}
+
+// --- Race state / lap system ---
+const RACE_COUNTDOWN = 'COUNTDOWN';
+const RACE_RACING = 'RACING';
+const RACE_FINISHED = 'FINISHED';
+let raceState = RACE_COUNTDOWN;
+let countdownT = 3.999; // 3, 2, 1, then GO flashes briefly
+let lapCurrent = 1;
+let lapStartTime = 0;
+let lastLapTimeMs = null;
+const finalLapTimesMs = [];
+const BEST_LAP_KEY = 'threeRacingGame.bestLapMs';
+let lapBestMs = (() => {
+  const raw = localStorage.getItem(BEST_LAP_KEY);
+  const n = raw == null ? NaN : Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : null;
+})();
+
+const countdownEl = document.getElementById('countdown');
+const finishBannerEl = document.getElementById('finish-banner');
+const finishSubEl = document.getElementById('finish-sub');
+
+// Start/finish line geometry (XZ plane). tan0 = forward direction across the line;
+// n0 is the right-hand normal (used for the cross-track width check).
+const _lineCenter = trackCenterline[0];
+const _lineTan = trackCurve.getTangent(0).clone();
+_lineTan.y = 0;
+_lineTan.normalize();
+const _lineNormal = new THREE.Vector3(_lineTan.z, 0, -_lineTan.x);
+// Signed distance along tan0 from line to chassis (negative = before line, positive = past).
+let prevLineSide = 0;
+// Becomes true once the car has driven well past the start line on the current lap;
+// this prevents the initial spawn (at sample 0) from counting as a false crossing,
+// and also prevents a single crossing from triggering twice due to physics jitter.
+let lapArmed = false;
+
+function setCountdownText(text, extraClass) {
+  countdownEl.textContent = text;
+  countdownEl.classList.remove('go', 'pop');
+  countdownEl.classList.add('show');
+  if (extraClass) countdownEl.classList.add(extraClass);
+  // restart the pop animation by forcing a reflow
+  void countdownEl.offsetWidth;
+  countdownEl.classList.add('pop');
+}
+
+function clearCountdown() {
+  countdownEl.classList.remove('show', 'pop', 'go');
+}
+
+function startRacing() {
+  raceState = RACE_RACING;
+  lapStartTime = performance.now();
+  prevLineSide = 0;
+  lapArmed = false;
+}
+
+function finishRace() {
+  raceState = RACE_FINISHED;
+  const best = finalLapTimesMs.reduce((a, b) => Math.min(a, b), Infinity);
+  const displayBest = Math.min(best, lapBestMs ?? Infinity);
+  finishSubEl.textContent = `BEST ${formatLapTime(displayBest)}`;
+  finishBannerEl.classList.add('show');
+}
+
+function updateCountdown(dt) {
+  if (raceState !== RACE_COUNTDOWN) return;
+  const prev = Math.ceil(countdownT);
+  countdownT -= dt;
+  const cur = Math.ceil(countdownT);
+  if (countdownT > 1) {
+    if (cur !== prev) setCountdownText(String(Math.max(1, cur)));
+  } else if (countdownT > 0.2) {
+    if (prev > 1) setCountdownText('GO', 'go');
+  } else {
+    clearCountdown();
+    startRacing();
+  }
+}
+
+function checkLapCrossing() {
+  if (raceState !== RACE_RACING) return;
+  const dx = chassisBody.position.x - _lineCenter.x;
+  const dz = chassisBody.position.z - _lineCenter.z;
+  const along = dx * _lineTan.x + dz * _lineTan.z;     // forward-of-line distance
+  const across = Math.abs(dx * _lineNormal.x + dz * _lineNormal.z); // cross-track
+
+  // Arm once we're clearly past the line and on the track (not just starting out).
+  if (!lapArmed && along > 10 && across < TRACK_WIDTH * 0.9) {
+    lapArmed = true;
+  }
+
+  if (lapArmed && prevLineSide < 0 && along >= 0 && across < TRACK_WIDTH) {
+    // Direction check: velocity must have positive component along track tangent.
+    const velAlong =
+      chassisBody.velocity.x * _lineTan.x +
+      chassisBody.velocity.z * _lineTan.z;
+    if (velAlong > 0) {
+      const now = performance.now();
+      const lapMs = now - lapStartTime;
+      lastLapTimeMs = lapMs;
+      finalLapTimesMs.push(lapMs);
+      if (lapBestMs == null || lapMs < lapBestMs) {
+        lapBestMs = lapMs;
+        try { localStorage.setItem(BEST_LAP_KEY, String(Math.round(lapBestMs))); } catch {}
+      }
+      if (lapCurrent >= TOTAL_LAPS) {
+        finishRace();
+      } else {
+        lapCurrent += 1;
+        lapStartTime = now;
+        lapArmed = false;
+      }
+    }
+  }
+  prevLineSide = along;
+}
+
+function gearFromMph(mph) {
+  if (mph < 1) return 0; // neutral
+  for (let g = GEAR_UP_MPH.length - 1; g >= 0; g--) {
+    if (mph >= GEAR_UP_MPH[g]) return g + 1;
+  }
+  return 1;
+}
+
+function formatLapTime(ms) {
+  const total = Math.max(0, ms);
+  const m = Math.floor(total / 60000);
+  const s = Math.floor((total % 60000) / 1000);
+  const mm = Math.floor(total % 1000);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(mm).padStart(3, '0')}`;
+}
+
+function updateHUD() {
+  const mph = Math.max(0, Math.abs(vehicle.currentVehicleSpeedKmHour) * 0.621371);
+  mphEl.textContent = String(Math.round(mph));
+
+  const gear = currentDisplayGear(mph);
+  gearEl.textContent = gear === 0 ? 'N' : String(gear);
+  gearEl.classList.toggle('manual', gearMode === 'MANUAL');
+  gearLabelEl.textContent = gearMode === 'MANUAL' ? 'GEAR • MAN' : 'GEAR';
+
+  const gearForRpm = gear === 0 ? 1 : gear;
+  const ratio = GEAR_RATIOS[gearForRpm] ?? GEAR_RATIOS[1];
+  const rpm = Math.min(REDLINE_RPM * 1.05, mph * ratio);
+  const pct = Math.min(1, rpm / REDLINE_RPM) * 100;
+  tachFillEl.style.width = `${pct}%`;
+
+  let lapMs;
+  if (raceState === RACE_RACING) {
+    lapMs = performance.now() - lapStartTime;
+  } else if (raceState === RACE_FINISHED) {
+    lapMs = lastLapTimeMs ?? 0;
+  } else {
+    lapMs = 0;
+  }
+  lapTimeEl.textContent = formatLapTime(lapMs);
+  lapCountEl.textContent = `${Math.min(lapCurrent, TOTAL_LAPS)} / ${TOTAL_LAPS}`;
+  lapBestEl.textContent = lapBestMs == null ? '--:--.---' : formatLapTime(lapBestMs);
+  lapBestEl.classList.toggle('has-best', lapBestMs != null);
+}
+
 const clock = new THREE.Clock();
 
 // Fixed-step physics with render-time interpolation.
@@ -566,12 +1208,16 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.1);
 
+  updateCountdown(dt);
+
   physAccum += dt;
   while (physAccum >= FIXED_STEP) {
     prevChassisPos.copy(chassisBody.position);
     prevChassisQuat.copy(chassisBody.quaternion);
     updateVehicle(FIXED_STEP);
     world.step(FIXED_STEP);
+    checkLapCrossing();
+    updateSkids();
     physAccum -= FIXED_STEP;
   }
   const alpha = Math.min(physAccum / FIXED_STEP, 1);
@@ -623,8 +1269,11 @@ function animate() {
   }
 
   updateCamera(dt, interpPos, interpQuat);
+  updateHUD();
+  updateMinimap(interpPos, interpQuat);
   renderer.render(scene, camera);
 }
+setCountdownText('3');
 animate();
 </script>
 </body>
